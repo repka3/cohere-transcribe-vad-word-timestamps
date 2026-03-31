@@ -70,10 +70,6 @@ soxr==1.0.0
 sympy==1.14.0
 threadpoolctl==3.6.0
 tokenizers==0.22.2
-torch==2.11.0+cu128
-torchaudio==2.11.0+cu128
-torchcodec==0.11.0+cu128
-torchvision==0.26.0+cu128
 tqdm==4.67.3
 transformers==5.4.0
 triton==3.6.0
