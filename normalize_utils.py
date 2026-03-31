@@ -1,11 +1,61 @@
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+from uuid import uuid4
 
 
+CACHE_DIR = Path(__file__).resolve().parent / "cache"
 
-#This function get an aboslute path of a media file, check if exist
-#Check if directory cache exist, otherwise it create it
-#randomize a name usid cuid
-# convert the media using ffmpeg into a 16kHz mono by averaging stereo
-#write the normalized file into the disk
-#return the absolute path (or None if error) to the caller.
-def convert_and_store_normalized_audio_from_file(absolute_path:str):
-    pass
+
+# This function gets an absolute path of a media file, checks if it exists,
+# ensures a cache directory exists, generates a randomized filename, converts
+# the media with ffmpeg into a 16 kHz mono WAV, writes the normalized file to
+# disk, and returns the absolute output path. On error it returns None.
+def convert_and_store_normalized_audio_from_file(absolute_path: str) -> str | None:
+    source_path = Path(absolute_path).expanduser()
+    if not source_path.is_absolute():
+        return None
+
+    source_path = source_path.resolve()
+    if not source_path.is_file():
+        return None
+
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None
+
+    output_path = CACHE_DIR / f"{uuid4().hex}.wav"
+    command = [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-i",
+        str(source_path),
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-c:a",
+        "pcm_s16le",
+        str(output_path),
+    ]
+
+    try:
+        completed = subprocess.run(command, capture_output=True, text=True, check=False)
+    except OSError:
+        return None
+
+    if completed.returncode != 0 or not output_path.is_file():
+        try:
+            output_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return None
+
+    return str(output_path.resolve())
