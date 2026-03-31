@@ -65,7 +65,7 @@ def convert_and_store_normalized_audio_from_file(absolute_path: str) -> str | No
 
 #this function receive a normalized audio and run silero vad, returning segments with timestamps.
 
-def filter_with_vad(absolute_path: str,min_silence_duration_ms:int=100,threshold:float=0.1):
+def filter_with_vad(absolute_path: str,threshold:float=0.1):
     model = load_silero_vad()
     wav = read_audio(absolute_path)
     speech_timestamps = get_speech_timestamps(
@@ -73,7 +73,8 @@ def filter_with_vad(absolute_path: str,min_silence_duration_ms:int=100,threshold
         model,
         min_speech_duration_ms = 250,
         max_speech_duration_s = float('inf'),
-        min_silence_duration_ms = min_silence_duration_ms,
+        min_silence_duration_ms = 1000,
+        speech_pad_ms=100,
         threshold=threshold,
         return_seconds=True,  # Return speech timestamps in seconds (default is samples)
     )

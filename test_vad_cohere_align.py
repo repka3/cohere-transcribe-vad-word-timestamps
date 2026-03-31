@@ -14,7 +14,6 @@ from normalize_utils import convert_and_store_normalized_audio_from_file, filter
 AUDIO_FILE_PATH = Path("/mnt/SharedFolder/riunione_save_10min.mp3")
 DEFAULT_LANGUAGE = "it"
 DEVICE = "cuda:1"
-MIN_SILENCE_DURATION_MS = 100
 VAD_THRESHOLD = 0.1
 
 
@@ -41,7 +40,6 @@ def main() -> int:
     try:
         segments = filter_with_vad(
             normalized_path,
-            min_silence_duration_ms=MIN_SILENCE_DURATION_MS,
             threshold=VAD_THRESHOLD,
         )
     except Exception as exc:
