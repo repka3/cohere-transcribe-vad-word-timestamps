@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
 
 
 CACHE_DIR = Path(__file__).resolve().parent / "cache"
@@ -59,3 +60,21 @@ def convert_and_store_normalized_audio_from_file(absolute_path: str) -> str | No
         return None
 
     return str(output_path.resolve())
+
+
+
+#this function receive a normalized audio and run silero vad, returning segments with timestamps.
+
+def filter_with_vad(absolute_path: str,threshold:float):
+    model = load_silero_vad()
+    wav = read_audio(absolute_path)
+    speech_timestamps = get_speech_timestamps(
+        wav,
+        model,
+        min_speech_duration_ms = 250,
+        max_speech_duration_s = float('inf'),
+        min_silence_duration_ms = 100,
+        threshold=threshold,
+        return_seconds=True,  # Return speech timestamps in seconds (default is samples)
+    )
+    return speech_timestamps
