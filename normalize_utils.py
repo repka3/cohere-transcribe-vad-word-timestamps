@@ -8,3 +8,4 @@
 #write the normalized file into the disk
 #return the absolute path (or None if error) to the caller.
 def convert_and_store_normalized_audio_from_file(absolute_path:str):
+    pass
