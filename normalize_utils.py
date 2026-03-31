@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from uuid import uuid4
 
 
 CACHE_DIR = Path(__file__).resolve().parent / "cache"
 
 
 # This function gets an absolute path of a media file, checks if it exists,
-# ensures a cache directory exists, generates a randomized filename, converts
+# ensures a cache directory exists, derives an output filename from the source,
+# converts
 # the media with ffmpeg into a 16 kHz mono WAV, writes the normalized file to
 # disk, and returns the absolute output path. On error it returns None.
 def convert_and_store_normalized_audio_from_file(absolute_path: str) -> str | None:
@@ -26,7 +26,7 @@ def convert_and_store_normalized_audio_from_file(absolute_path: str) -> str | No
     except OSError:
         return None
 
-    output_path = CACHE_DIR / f"{uuid4().hex}.wav"
+    output_path = CACHE_DIR / f"{source_path.stem}_normalized.wav"
     command = [
         "ffmpeg",
         "-nostdin",
