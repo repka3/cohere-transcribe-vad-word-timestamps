@@ -8,6 +8,14 @@ from pathlib import Path
 import soundfile as sf
 
 from cohere_transcript import CohereTranscript
+from forced_align_utils import (
+    AlignedSegment,
+    ForcedAlignmentResources,
+    WordAlignment,
+    build_aligned_segment,
+    load_forced_alignment_resources,
+    unload_forced_alignment_resources,
+)
 from normalize_utils import convert_and_store_normalized_audio_from_file, filter_with_vad
 
 
@@ -24,6 +32,19 @@ def format_timestamp(seconds: float) -> str:
     if hours:
         return f"{hours:02d}:{minutes:02d}:{remainder:05.2f}"
     return f"{minutes:02d}:{remainder:05.2f}"
+
+
+def print_aligned_words(words: list[WordAlignment]) -> None:
+    if not words:
+        print("<no aligned words>")
+        return
+
+    for word in words:
+        print(
+            f"  {format_timestamp(float(word['start']))} -> "
+            f"{format_timestamp(float(word['end']))} | "
+            f"{word['text']} | score={float(word['score']):.3f}"
+        )
 
 
 def main() -> int:
@@ -62,13 +83,23 @@ def main() -> int:
         print(f"Failed to read normalized WAV {normalized_path}: {exc}", file=sys.stderr)
         return 1
 
+    transcript_client: CohereTranscript | None = None
+    alignment_resources: ForcedAlignmentResources | None = None
+
     try:
         transcript_client = CohereTranscript(default_language=DEFAULT_LANGUAGE, device=DEVICE)
+        alignment_resources = load_forced_alignment_resources(device=DEVICE)
     except Exception as exc:
-        print(f"Failed to initialize Cohere transcription: {exc}", file=sys.stderr)
+        if transcript_client is not None:
+            transcript_client.unload_model()
+        print(f"Failed to initialize transcription/alignment: {exc}", file=sys.stderr)
         return 1
+    assert transcript_client is not None
+    assert alignment_resources is not None
+
     had_failures = False
     run_start = time.perf_counter()
+    aligned_segments: list[AlignedSegment] = []
 
     try:
         with tempfile.TemporaryDirectory(prefix="vad_cohere_segments_") as temp_dir:
@@ -95,27 +126,40 @@ def main() -> int:
                 try:
                     sf.write(segment_path, segment_audio, sample_rate, subtype="PCM_16")
                     transcript = transcript_client.transcribe_file(str(segment_path))
+                    aligned_segment = build_aligned_segment(
+                        audio_path=str(segment_path),
+                        transcript=transcript,
+                        segment_start_seconds=start_seconds,
+                        segment_end_seconds=end_seconds,
+                        language=DEFAULT_LANGUAGE,
+                        resources=alignment_resources,
+                    )
                 except Exception as exc:
                     had_failures = True
                     print(
                         f"[{index:03d}] {format_timestamp(start_seconds)} -> "
-                        f"{format_timestamp(end_seconds)} | transcription failed: {exc}",
+                        f"{format_timestamp(end_seconds)} | transcription/alignment failed: {exc}",
                         file=sys.stderr,
                     )
                     continue
 
+                aligned_segments.append(aligned_segment)
                 duration = end_seconds - start_seconds
                 print(
                     f"[{index:03d}] {format_timestamp(start_seconds)} -> "
                     f"{format_timestamp(end_seconds)} ({duration:.2f}s)"
                 )
-                print(transcript.strip() or "<empty transcript>")
+                print(aligned_segment["transcript"].strip() or "<empty transcript>")
+                print_aligned_words(aligned_segment["words"])
                 print()
     finally:
-        transcript_client.unload_model()
+        if transcript_client is not None:
+            transcript_client.unload_model()
+        unload_forced_alignment_resources(alignment_resources)
 
     elapsed = time.perf_counter() - run_start
     print(f"Elapsed: {elapsed:.2f}s")
+    print(f"Aligned segments: {len(aligned_segments)}")
     return 1 if had_failures else 0
 
 
