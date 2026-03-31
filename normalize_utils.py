@@ -73,8 +73,8 @@ def filter_with_vad(absolute_path: str,threshold:float=0.1):
         model,
         min_speech_duration_ms = 250,
         max_speech_duration_s = float('inf'),
-        min_silence_duration_ms = 1000,
-        speech_pad_ms=100,
+        min_silence_duration_ms = 2000,
+        speech_pad_ms=400,
         threshold=threshold,
         return_seconds=True,  # Return speech timestamps in seconds (default is samples)
     )
