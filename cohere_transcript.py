@@ -3,6 +3,7 @@ from __future__ import annotations
 import gc
 from pathlib import Path
 
+import numpy as np
 import torch
 from transformers import AutoProcessor, CohereAsrForConditionalGeneration
 from transformers.audio_utils import load_audio
@@ -76,6 +77,49 @@ class CohereTranscript:
         )
 
         audio = load_audio(str(path), sampling_rate=16000)
+        inputs = self.processor(
+            audio,
+            sampling_rate=16000,
+            return_tensors="pt",
+            language=resolved_language,
+            punctuation=resolved_punctuation,
+        )
+        audio_chunk_index = inputs.get("audio_chunk_index")
+        inputs = inputs.to(self._model_device, dtype=self.model.dtype)
+
+        with torch.inference_mode():
+            outputs = self.model.generate(**inputs, max_new_tokens=resolved_max_new_tokens)
+
+        outputs = outputs.cpu()
+        decode_kwargs = {"skip_special_tokens": True}
+        if audio_chunk_index is not None:
+            decode_kwargs["audio_chunk_index"] = audio_chunk_index
+            decode_kwargs["language"] = resolved_language
+
+        transcript = self.processor.decode(outputs, **decode_kwargs)
+        if isinstance(transcript, list):
+            if len(transcript) == 1:
+                return transcript[0]
+            return "\n".join(transcript)
+
+        return transcript
+
+    def transcribe_array(
+        self,
+        audio: np.ndarray,
+        language: str | None = None,
+        punctuation: bool | None = None,
+        max_new_tokens: int | None = None,
+    ) -> str:
+        """Transcribe a 16 kHz mono numpy array directly (no file needed)."""
+        self.load_model()
+
+        resolved_language = language or self.default_language
+        resolved_punctuation = self.punctuation if punctuation is None else punctuation
+        resolved_max_new_tokens = (
+            self.max_new_tokens if max_new_tokens is None else max_new_tokens
+        )
+
         inputs = self.processor(
             audio,
             sampling_rate=16000,
