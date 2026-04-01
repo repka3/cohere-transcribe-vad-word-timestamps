@@ -83,34 +83,6 @@ At the moment, the following values are hardcoded in `test_vad_cohere_align.py`:
 
 So the expected workflow today is to edit those constants and then run the script.
 
-## Local voice assistant endpoint
-
-This repository also provides a standalone FastAPI endpoint for using Cohere Transcribe as the speech-to-text backend in local agentic voice assistants such as OpenClaw and Hermes.
-
-The endpoint receives base64-encoded audio and a language code, loads the model, transcribes the audio entirely in-memory (no temp files), and unloads the model after each request to free GPU memory for other agent tasks.
-
-### Running the endpoint
-
-```bash
-.venv/bin/python -m uvicorn sst_asr_endpoint_openclaw_hermes:app --host 0.0.0.0 --port 8000
-```
-
-### Example request
-
-```bash
-AUDIO_B64=$(base64 -w0 /path/to/audio.wav)
-curl -X POST http://localhost:8000/transcribe \
-  -H "Content-Type: application/json" \
-  -d "{\"audio_base64\": \"$AUDIO_B64\", \"language\": \"en\"}"
-```
-
-### Example response
-
-```json
-{"text": "Hello, this is the transcribed text."}
-```
-
-The endpoint accepts any audio format that `soundfile` can read (WAV, FLAC, OGG, etc.), automatically converts to mono 16 kHz, and supports all languages available in the Cohere Transcribe model.
 
 ## Output shape
 
@@ -166,3 +138,32 @@ Current status: working local PoC for:
 - FastAPI endpoint for local agentic voice assistants (OpenClaw, Hermes)
 
 Next logical step: add diarization and use the aligned word timestamps for speaker attribution.
+
+## Local voice assistant endpoint
+
+This repository also provides a standalone FastAPI endpoint for using Cohere Transcribe as the speech-to-text backend in local agentic voice assistants such as OpenClaw and Hermes.
+
+The endpoint receives base64-encoded audio and a language code, loads the model, transcribes the audio entirely in-memory (no temp files), and unloads the model after each request to free GPU memory for other agent tasks.
+
+### Running the endpoint
+
+```bash
+.venv/bin/python -m uvicorn sst_asr_endpoint_openclaw_hermes:app --host 0.0.0.0 --port 8000
+```
+
+### Example request
+
+```bash
+AUDIO_B64=$(base64 -w0 /path/to/audio.wav)
+curl -X POST http://localhost:8000/transcribe \
+  -H "Content-Type: application/json" \
+  -d "{\"audio_base64\": \"$AUDIO_B64\", \"language\": \"en\"}"
+```
+
+### Example response
+
+```json
+{"text": "Hello, this is the transcribed text."}
+```
+
+The endpoint accepts any audio format that `soundfile` can read (WAV, FLAC, OGG, etc.), automatically converts to mono 16 kHz, and supports all languages available in the Cohere Transcribe model.
